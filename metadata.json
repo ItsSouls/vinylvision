@@ -1,0 +1,7 @@
+{
+  "name": "VinylVision",
+  "description": "AI-powered audio library manager. Scan vinyl spines and covers to automatically catalog your collection.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
