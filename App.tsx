@@ -4,6 +4,7 @@ import { Scanner } from './components/Scanner';
 import { AlbumDetails } from './components/AlbumDetails';
 import { Album, ViewState } from './types';
 import { fetchRemoteAlbums, upsertRemoteAlbum, deleteRemoteAlbum } from './services/librarySyncService';
+import { editorPassword } from './services/editorAccess';
 
 // Initial mock data
 const MOCK_ALBUMS: Album[] = [
@@ -41,6 +42,10 @@ export default function App() {
   const [albums, setAlbums] = useState<Album[]>(MOCK_ALBUMS);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | undefined>(undefined);
   const [scannedImage, setScannedImage] = useState<string | undefined>(undefined);
+  const [isEditor, setIsEditor] = useState<boolean>(() => {
+    const cached = localStorage.getItem('vinyl-vision-editor');
+    return cached === 'granted';
+  });
 
   // Load from local storage on mount (simulated persistence)
   useEffect(() => {
@@ -74,13 +79,31 @@ export default function App() {
     localStorage.setItem('vinyl-vision-library', JSON.stringify(albums));
   }, [albums]);
 
+  const ensureEditorAccess = () => {
+    if (!editorPassword) return true;
+    if (isEditor) return true;
+
+    const input = prompt('Introduce la contraseña de edición');
+    if (input && input === editorPassword) {
+      localStorage.setItem('vinyl-vision-editor', 'granted');
+      setIsEditor(true);
+      return true;
+    }
+
+    alert('Contraseña incorrecta');
+    return false;
+  };
+
   const handleManualAdd = () => {
+    if (!ensureEditorAccess()) return;
+
     setSelectedAlbum(undefined);
     setScannedImage(undefined);
     setView(ViewState.DETAILS);
   };
 
   const handleStartScan = () => {
+    if (!ensureEditorAccess()) return;
     setSelectedAlbum(undefined);
     setScannedImage(undefined);
     setView(ViewState.SCANNER);
@@ -93,6 +116,27 @@ export default function App() {
   };
 
   const handleSaveAlbum = async (album: Album) => {
+    const normalizedTitle = album.title.trim().toLowerCase();
+    const normalizedArtist = album.artist.trim().toLowerCase();
+    const normalizedCatalog = album.catalogNumber?.trim().toLowerCase();
+
+    const alreadyExists = albums.some(a => {
+      if (a.id === album.id) return false;
+      const sameCatalog =
+        normalizedCatalog &&
+        a.catalogNumber &&
+        a.catalogNumber.trim().toLowerCase() === normalizedCatalog;
+      const sameArtistTitle =
+        a.title.trim().toLowerCase() === normalizedTitle &&
+        a.artist.trim().toLowerCase() === normalizedArtist;
+      return Boolean(sameCatalog || sameArtistTitle);
+    });
+
+    if (alreadyExists) {
+      alert('Ese disco ya esta en tu biblioteca.');
+      return;
+    }
+
     setAlbums(prev => {
       const existing = prev.findIndex(a => a.id === album.id);
       if (existing >= 0) {
@@ -129,6 +173,7 @@ export default function App() {
   };
 
   const handleSelectAlbum = (album: Album) => {
+    if (!ensureEditorAccess()) return;
     setSelectedAlbum(album);
     setScannedImage(undefined);
     setView(ViewState.DETAILS);
@@ -146,7 +191,7 @@ export default function App() {
       {/* Main Content Area */}
       <main className="h-full">
         {view === ViewState.LIBRARY && (
-          <Library
+         <Library
             albums={albums}
             onSelectAlbum={handleSelectAlbum}
             onManualClick={handleManualAdd}

@@ -14,6 +14,7 @@ VinylVision es una aplicación web enfocada a coleccionistas españoles que quie
 - 🔍 **Buscador inteligente**: filtra por artista, título, sello, formato, año o nombre/posición de cualquier pista.
 - ☁️ **Sincronización Supabase**: los cambios quedan guardados en Postgres mediante la API REST de Supabase (además del fallback en `localStorage`).
 - 📱 **Diseño listo para móvil**: la UI está pensada como primera iteración de una futura app móvil, con botones grandes y modos de cámara.
+- 🔐 **Modo edición con contraseña**: sólo quien conoce `VITE_EDITOR_PASSWORD` puede entrar en la vista de edición.
 
 ## Tecnologías
 
@@ -63,8 +64,7 @@ vinylvision/
 | `tracks`         | jsonb   | array de `{ position, title, duration }` |
 | `added_at`       | bigint  | timestamp en milisegundos              |
 
-3. Si ya tenías columnas camelCase (`catalogNumber`, `coverUrl`, `addedAt`), añade en `.env.local` `VITE_SUPABASE_COLUMN_STYLE=camel
-VITE_DISCOGS_TOKEN=tu_token_discogs` para que el cliente use los mismos nombres.
+3. Si ya tenías columnas camelCase (`catalogNumber`, `coverUrl`, `addedAt`), añade en `.env.local` `VITE_SUPABASE_COLUMN_STYLE=camel` para que el cliente use los mismos nombres. Aprovecha para definir también `VITE_DISCOGS_TOKEN=tu_token_discogs` si quieres seguir usando el autofill con Discogs.
 
 4. **Políticas RLS**: habilita Row Level Security en la tabla y crea políticas mínimas para el rol `anon`:
 
@@ -93,9 +93,11 @@ Crea un archivo `.env.local` en la raíz (no se sube a Git) con:
 VITE_SUPABASE_URL=https://xxxxxxxx.supabase.co
 VITE_SUPABASE_ANON_KEY=tu_clave_anon
 VITE_SUPABASE_COLUMN_STYLE=camel   # usa "snake" si tus columnas están en snake_case (valor por defecto)
+VITE_DISCOGS_TOKEN=tu_token_discogs
+VITE_EDITOR_PASSWORD=solo-tu-sabes-esto
 ```
 
-(Opcional) si usas Discogs, añade `DISCOGS_TOKEN` en `services/discogsService.ts` o usa un sistema de secretos en el despliegue.
+Si no defines `VITE_EDITOR_PASSWORD`, cualquier usuario podrá editar. Puedes dejarlo vacío en entornos públicos sólo-lectura.
 
 ## Scripts
 
