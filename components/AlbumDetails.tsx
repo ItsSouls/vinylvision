@@ -104,7 +104,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
   const getPageTitle = () => (album ? 'Editar disco' : 'Agregar disco');
 
   return (
-    <div className="bg-slate-950 min-h-screen pb-24">
+    <div className="bg-slate-950 min-h-screen pb-24 overflow-y-auto">
       {/* Navbar Overlay / Header */}
       <div className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-4 h-16 flex items-center justify-between">
         <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
