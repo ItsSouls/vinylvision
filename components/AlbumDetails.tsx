@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Album } from '../types';
-import { ArrowLeft, Save, Trash2, Clock, Disc, Wand2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Clock, Disc, Wand2, Loader2, MinusCircle } from 'lucide-react';
 import { Button } from './Button';
 import { lookupAlbumDetails } from '../services/discogsService';
 
@@ -33,6 +33,14 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
   });
 
   const [isLookingUp, setIsLookingUp] = useState(false);
+
+  const removeTrackAt = (index: number) => {
+    if (!formData.tracks) return;
+    setFormData({
+      ...formData,
+      tracks: formData.tracks.filter((_, idx) => idx !== index),
+    });
+  };
 
   useEffect(() => {
     if (album) {
@@ -242,7 +250,15 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                  {formData.tracks?.map((track, idx) => (
                      <div key={idx} className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg hover:bg-slate-900 transition-colors group">
-                         <span className="w-8 text-xs font-mono text-slate-500 text-right">{track.position || idx + 1}</span>
+                         <button
+                           type="button"
+                           onClick={() => removeTrackAt(idx)}
+                           className="text-red-400 hover:text-red-300 transition-colors p-1"
+                           title="Eliminar pista"
+                         >
+                           <MinusCircle size={16} />
+                         </button>
+                         <span className="text-xs font-mono text-slate-500">{track.position || idx + 1}</span>
                          <div className="flex-1">
                              <input
                                 type="text"
@@ -265,7 +281,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
                                     newTracks[idx].duration = e.target.value;
                                     setFormData({...formData, tracks: newTracks});
                                 }}
-                                className="bg-transparent w-12 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                                className="bg-transparent w-6 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
                              />
                          </div>
                      </div>
