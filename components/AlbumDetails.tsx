@@ -104,7 +104,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
   const getPageTitle = () => (album ? 'Editar disco' : 'Agregar disco');
 
   return (
-    <div className="bg-slate-950 min-h-screen pb-24 overflow-y-auto">
+    <div className="bg-slate-950 min-h-screen flex flex-col">
       {/* Navbar Overlay / Header */}
       <div className="sticky top-0 z-30 bg-slate-950/80 backdrop-blur-md border-b border-slate-800 px-4 h-16 flex items-center justify-between">
         <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
@@ -114,8 +114,9 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
         <div className="w-10" /> {/* Spacer for centering */}
       </div>
 
-      <div className="max-w-3xl mx-auto p-4 md:p-8">
-        <form onSubmit={handleSubmit} className="space-y-8">
+      <div className="flex-1 overflow-y-auto pb-24">
+        <div className="max-w-3xl mx-auto p-4 md:p-8">
+          <form onSubmit={handleSubmit} className="space-y-8">
           
           {/* Top Section: Cover & Key Info */}
           <div className="flex flex-col md:flex-row gap-8">
@@ -305,7 +306,8 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
              </Button>
           </div>
 
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
