@@ -6,6 +6,7 @@ import { lookupAlbumDetails } from '../services/discogsService';
 
 interface AlbumDetailsProps {
   album?: Album;
+  initialData?: Partial<Album>;
   scannedImage?: string;
   onSave: (album: Album) => void;
   onDelete?: (id: string) => void;
@@ -14,6 +15,7 @@ interface AlbumDetailsProps {
 
 export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
   album,
+  initialData,
   scannedImage,
   onSave,
   onDelete,
@@ -38,8 +40,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
       return;
     }
 
-    // Manual entry defaults
-    setFormData({
+    const base: Partial<Album> = {
       id: crypto.randomUUID(),
       title: '',
       artist: '',
@@ -50,8 +51,18 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
       tracks: [],
       coverUrl: scannedImage || '',
       addedAt: Date.now(),
-    });
-  }, [album, scannedImage]);
+    };
+
+    if (initialData) {
+      setFormData({
+        ...base,
+        ...initialData,
+        coverUrl: initialData.coverUrl || base.coverUrl,
+      });
+    } else {
+      setFormData(base);
+    }
+  }, [album, initialData, scannedImage]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

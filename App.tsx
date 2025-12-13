@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Library } from './components/Library';
 import { Scanner } from './components/Scanner';
 import { AlbumDetails } from './components/AlbumDetails';
-import { Album, ViewState } from './types';
+import { Album, ViewState, ScanMode } from './types';
 import { fetchRemoteAlbums, upsertRemoteAlbum, deleteRemoteAlbum } from './services/librarySyncService';
 import { editorPassword } from './services/editorAccess';
+import { analyzeScan } from './services/scanAnalyzer';
 
 // Initial mock data
 const MOCK_ALBUMS: Album[] = [
@@ -42,6 +43,8 @@ export default function App() {
   const [albums, setAlbums] = useState<Album[]>(MOCK_ALBUMS);
   const [selectedAlbum, setSelectedAlbum] = useState<Album | undefined>(undefined);
   const [scannedImage, setScannedImage] = useState<string | undefined>(undefined);
+  const [draftAlbum, setDraftAlbum] = useState<Partial<Album> | undefined>(undefined);
+  const [isProcessingScan, setIsProcessingScan] = useState(false);
   const [isEditor, setIsEditor] = useState<boolean>(() => {
     const cached = localStorage.getItem('vinyl-vision-editor');
     return cached === 'granted';
@@ -83,14 +86,14 @@ export default function App() {
     if (!editorPassword) return true;
     if (isEditor) return true;
 
-    const input = prompt('Introduce la contraseña de edición');
+    const input = prompt('Introduce la contrasena de edicion');
     if (input && input === editorPassword) {
       localStorage.setItem('vinyl-vision-editor', 'granted');
       setIsEditor(true);
       return true;
     }
 
-    alert('Contraseña incorrecta');
+    alert('Contrasena incorrecta');
     return false;
   };
 
@@ -98,6 +101,7 @@ export default function App() {
     if (!ensureEditorAccess()) return;
 
     setSelectedAlbum(undefined);
+    setDraftAlbum(undefined);
     setScannedImage(undefined);
     setView(ViewState.DETAILS);
   };
@@ -105,14 +109,36 @@ export default function App() {
   const handleStartScan = () => {
     if (!ensureEditorAccess()) return;
     setSelectedAlbum(undefined);
+    setDraftAlbum(undefined);
     setScannedImage(undefined);
     setView(ViewState.SCANNER);
   };
 
-  const handleScanCapture = (imageData: string) => {
-    setSelectedAlbum(undefined);
-    setScannedImage(imageData);
-    setView(ViewState.DETAILS);
+  const handleScanCapture = async ({ image, mode }: { image: string; mode: ScanMode }) => {
+    if (!ensureEditorAccess()) return;
+    setIsProcessingScan(true);
+    try {
+      const prefill = await analyzeScan(image, mode);
+      setDraftAlbum(prefill);
+      setScannedImage(image);
+      setSelectedAlbum(undefined);
+      setView(ViewState.DETAILS);
+    } catch (error) {
+      console.error('No se pudo analizar el escaneo', error);
+      alert('No se pudo identificar el disco automaticamente. Completa los datos manualmente.');
+      setDraftAlbum({
+        id: crypto.randomUUID(),
+        coverUrl: image,
+        addedAt: Date.now(),
+        format: 'Vinyl',
+        tracks: [],
+      });
+      setScannedImage(image);
+      setSelectedAlbum(undefined);
+      setView(ViewState.DETAILS);
+    } finally {
+      setIsProcessingScan(false);
+    }
   };
 
   const handleSaveAlbum = async (album: Album) => {
@@ -137,6 +163,7 @@ export default function App() {
       return;
     }
 
+    setDraftAlbum(undefined);
     setAlbums(prev => {
       const existing = prev.findIndex(a => a.id === album.id);
       if (existing >= 0) {
@@ -150,6 +177,7 @@ export default function App() {
 
     // Reset add/edit state
     setSelectedAlbum(undefined);
+    setDraftAlbum(undefined);
     setScannedImage(undefined);
     setView(ViewState.LIBRARY);
 
@@ -175,18 +203,25 @@ export default function App() {
   const handleSelectAlbum = (album: Album) => {
     if (!ensureEditorAccess()) return;
     setSelectedAlbum(album);
+    setDraftAlbum(undefined);
     setScannedImage(undefined);
     setView(ViewState.DETAILS);
   };
 
   const handleBackToLibrary = () => {
     setSelectedAlbum(undefined);
+    setDraftAlbum(undefined);
     setScannedImage(undefined);
     setView(ViewState.LIBRARY);
   };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
+      {isProcessingScan && (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center text-white text-lg">
+          Analizando escaneo...
+        </div>
+      )}
       
       {/* Main Content Area */}
       <main className="h-full">
@@ -209,6 +244,7 @@ export default function App() {
         {view === ViewState.DETAILS && (
           <AlbumDetails 
             album={selectedAlbum}
+            initialData={draftAlbum}
             scannedImage={scannedImage}
             onSave={handleSaveAlbum}
             onDelete={handleDeleteAlbum}

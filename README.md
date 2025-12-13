@@ -23,6 +23,7 @@ VinylVision es una aplicación web enfocada a coleccionistas españoles que quie
 - [Supabase](https://supabase.com/) para la base de datos y API REST
 - [Discogs API](https://www.discogs.com/developers/) (fetch directo)
 - [Lucide React](https://lucide.dev/) para los iconos
+- [Tesseract.js](https://github.com/naptha/tesseract.js) para el OCR en el flujo de escaneo
 
 ## Requisitos
 

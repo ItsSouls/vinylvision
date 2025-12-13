@@ -5,7 +5,7 @@ import { ScanMode } from '../types';
 
 interface ScannerProps {
   onClose: () => void;
-  onCapture: (image: string) => void;
+  onCapture: (payload: { image: string; mode: ScanMode }) => void;
 }
 
 export const Scanner: React.FC<ScannerProps> = ({ onClose, onCapture }) => {
@@ -70,7 +70,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onClose, onCapture }) => {
 
     const imageData = canvas.toDataURL('image/jpeg', 0.85);
     stopCamera();
-    onCapture(imageData);
+    onCapture({ image: imageData, mode: scanMode });
   };
 
   return (
