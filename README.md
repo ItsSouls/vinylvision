@@ -4,70 +4,66 @@
 
 # VinylVision
 
-VinylVision es una aplicación web enfocada a coleccionistas españoles que quieren catalogar su biblioteca de vinilos/CDs/casetes. Permite escanear portadas o lomos desde la cámara, completar la ficha manualmente o apoyarse en la API de Discogs y sincronizar toda la información en Supabase para tener copia en la nube y acceso desde cualquier dispositivo.
+VinylVision es una aplicacion web pensada para coleccionistas espanoles de vinilos, CDs y cassettes. Desde la camara del navegador puedes capturar el lomo o la portada del disco, dejar que Gemini 2.5 Flash lea el texto y, con ayuda de la API de Discogs, completar la ficha y sincronizarla con Supabase para tener un respaldo en la nube.
 
-## Características principales
+## Caracteristicas principales
 
-- 📷 **Escáner integrado**: captura imágenes desde la cámara del navegador (modo portada/lomo) y adjunta la foto al nuevo registro.
-- 🧠 **Autorrelleno opcional**: utiliza Discogs para recuperar título, artista, sello, formato y lista de pistas a partir de código de catálogo.
-- 📝 **Edición completa**: formulario editable en español para artista, título, formato, año, sello y lista de canciones con scroll.
-- 🔍 **Buscador inteligente**: filtra por artista, título, sello, formato, año o nombre/posición de cualquier pista.
-- ☁️ **Sincronización Supabase**: los cambios quedan guardados en Postgres mediante la API REST de Supabase (además del fallback en `localStorage`).
-- 📱 **Diseño listo para móvil**: la UI está pensada como primera iteración de una futura app móvil, con botones grandes y modos de cámara.
-- 🔐 **Modo edición con contraseña**: sólo quien conoce `VITE_EDITOR_PASSWORD` puede entrar en la vista de edición.
+- **Escaner inteligente (Gemini + Discogs)**: toma una foto, Gemini extrae artista/titulo/catalogo y la app busca la edicion exacta en Discogs para rellenar pistas, sello y ano.
+- **Formulario completo en espanol**: campos para artista, titulo, formato, sello, ano y lista de pistas con scroll infinito.
+- **Buscador avanzado**: filtra por cualquier metadato, incluido el texto de la lista de canciones.
+- **Sincronizacion con Supabase**: todas las operaciones se envian a Postgres mediante la API REST, ademas de guardarse en `localStorage` como respaldo offline.
+- **Modo edicion protegido**: solo quien conoce `VITE_EDITOR_PASSWORD` puede abrir la vista de detalle o eliminar registros.
 
-## Tecnologías
+## Tecnologias
 
 - [Vite](https://vitejs.dev/) + [React 19](https://react.dev/) + [TypeScript](https://www.typescriptlang.org/)
-- Estilos con utilidades Tailwind (clases inline)
+- Tailwind utility classes embebidas en el JSX
 - [Supabase](https://supabase.com/) para la base de datos y API REST
-- [Discogs API](https://www.discogs.com/developers/) (fetch directo)
+- [Discogs API](https://www.discogs.com/developers/) para la validacion y el enriquecimiento
+- [Gemini 2.5 Flash](https://ai.google.dev/) via Google AI Studio para el reconocimiento visual
 - [Lucide React](https://lucide.dev/) para los iconos
-- [Tesseract.js](https://github.com/naptha/tesseract.js) para el OCR en el flujo de escaneo
 
-## Requisitos
+## Requisitos previos
 
-- Node.js 18+ (recomendado 20.x)
-- Cuenta gratuita en Supabase (o propia instancia Postgres con la API compatible)
-- Clave personal de la API de Discogs (opcional pero recomendada)
+- Node.js 18 o superior (recomendado 20.x)
+- Un proyecto gratuito en Supabase
+- Token de la API de Discogs (desde la seccion Developer de tu perfil)
+- API key de Google AI Studio (Gemini 2.5 Flash)
 
-## Estructura de carpetas
+## Estructura
 
 ```
 vinylvision/
-├─ components/             # UI principal (Biblioteca, Detalles, Escáner, Botón)
-├─ services/
-│  ├─ discogsService.ts    # Llamadas a Discogs
-│  ├─ librarySyncService.ts# CRUD contra Supabase
-│  └─ supabaseClient.ts    # Cliente Supabase
-├─ App.tsx                 # Router simple por estados (Librería, Escáner, Detalles)
-├─ types.ts                # Tipos compartidos
-├─ vite.config.ts          # Configuración Vite
-├─ package.json
-└─ README.md
+|- components/              # Biblioteca, Detalles, Escaner, botones
+|- services/
+|  |- discogsService.ts     # Llamadas a Discogs
+|  |- geminiService.ts      # Cliente Gemini (vision)
+|  |- scanAnalyzer.ts       # Combina Gemini + Discogs
+|  |- librarySyncService.ts # CRUD Supabase
+|  `- supabaseClient.ts     # Inicializacion Supabase
+|- App.tsx                  # Router basado en estados
+|- types.ts                 # Tipos compartidos
+`- README.md
 ```
 
-## Configuración de Supabase
+## Configurar Supabase
 
-1. Crea un proyecto nuevo en Supabase.
-2. En Table Editor crea la tabla `albums`. Puedes usar snake_case o camelCase, pero define al menos estas columnas:
+1. Crea la tabla `albums` con al menos:
 
-| Columna          | Tipo    | Comentario                             |
-| ---------------- | ------- | -------------------------------------- |
-| `id`             | text PK | `crypto.randomUUID()` en el frontend   |
-| `artist`         | text    |                                        |
-| `title`          | text    |                                        |
-| `catalog_number` | text    | (o `catalogNumber` si prefieres camel) |
-| `label`          | text    |                                        |
-| `format`         | text    | `Vinyl`, `CD`, `Cassette`, `Digital`   |
-| `year`           | text o date |                                   |
-| `cover_url`      | text    | base64 o URL externa                   |
-| `tracks`         | jsonb   | array de `{ position, title, duration }` |
-| `added_at`       | bigint  | timestamp en milisegundos              |
+| Columna          | Tipo        | Comentario                                      |
+| ---------------- | ----------- | ----------------------------------------------- |
+| `id`             | text (PK)   | generado con `crypto.randomUUID()` en el cliente |
+| `artist`         | text        |                                                 |
+| `title`          | text        |                                                 |
+| `catalog_number` | text        | usa `catalogNumber` si prefieres camelCase      |
+| `label`          | text        |                                                 |
+| `format`         | text        | `Vinyl`, `CD`, `Cassette` o `Digital`           |
+| `year`           | text/date   | admite `YYYY` o `YYYY-01-01`                    |
+| `cover_url`      | text        | URL o base64                                   |
+| `tracks`         | jsonb       | arreglo de `{ position, title, duration }`      |
+| `added_at`       | bigint      | timestamp en milisegundos                       |
 
-3. Si ya tenías columnas camelCase (`catalogNumber`, `coverUrl`, `addedAt`), añade en `.env.local` `VITE_SUPABASE_COLUMN_STYLE=camel` para que el cliente use los mismos nombres. Aprovecha para definir también `VITE_DISCOGS_TOKEN=tu_token_discogs` si quieres seguir usando el autofill con Discogs.
-
-4. **Políticas RLS**: habilita Row Level Security en la tabla y crea políticas mínimas para el rol `anon`:
+2. Habilita Row Level Security y crea politicas basicas para el rol `anon`:
 
 ```sql
 create policy "allow anon insert"
@@ -82,60 +78,67 @@ on public.albums
 for select
 to anon
 using (true);
-
--- Opcionalmente agrega update/delete si lo necesitas.
 ```
+
+3. Si tu esquema usa camelCase (`catalogNumber`, `coverUrl`, `addedAt`), define `VITE_SUPABASE_COLUMN_STYLE=camel` para que el cliente envie los campos correctos. Por defecto se usa snake_case.
+
+## Flujo del escaner con IA
+
+1. **Captura**: el usuario abre el modo Scan y elige *Lomo* (prioriza catalogo) o *Portada* (prioriza artista/titulo).
+2. **Gemini**: enviamos la imagen a Gemini 2.5 Flash con un prompt especifico y obtenemos un JSON con los campos reconocidos.
+3. **Discogs**: con esos datos realizamos una busqueda (catalogo > artista+titulo) y descargamos pistas, sello, formato y portada oficial.
+4. **Formulario**: `AlbumDetails` se abre con todos los campos pre-rellenados para que puedas revisar y guardar.
+
+Si no se encuentra coincidencia, siempre puedes editar los campos manualmente y mantener tu propia foto.
 
 ## Variables de entorno
 
-Crea un archivo `.env.local` en la raíz (no se sube a Git) con:
+Crea `.env.local` con:
 
 ```
-VITE_SUPABASE_URL=https://xxxxxxxx.supabase.co
+VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
 VITE_SUPABASE_ANON_KEY=tu_clave_anon
-VITE_SUPABASE_COLUMN_STYLE=camel   # usa "snake" si tus columnas están en snake_case (valor por defecto)
+VITE_SUPABASE_COLUMN_STYLE=camel   # usa "snake" si tus columnas estan en snake_case
 VITE_DISCOGS_TOKEN=tu_token_discogs
+VITE_GEMINI_API_KEY=tu_clave_de_gemini
 VITE_EDITOR_PASSWORD=solo-tu-sabes-esto
 ```
 
-Si no defines `VITE_EDITOR_PASSWORD`, cualquier usuario podrá editar. Puedes dejarlo vacío en entornos públicos sólo-lectura.
+`VITE_EDITOR_PASSWORD` es opcional pero recomendable para proteger la edicion.
 
 ## Scripts
 
-| Comando           | Descripción                           |
-| ----------------- | ------------------------------------- |
-| `npm install`     | Instala dependencias                  |
-| `npm run dev`     | Arranca Vite en modo desarrollo       |
-| `npm run build`   | Compila la app en `dist/`             |
-| `npm run preview` | Sirve el build para revisión local    |
+| Comando           | Descripcion                                |
+| ----------------- | ------------------------------------------ |
+| `npm install`     | Instala dependencias                       |
+| `npm run dev`     | Arranca Vite en modo desarrollo            |
+| `npm run build`   | Genera la version optimizada en `dist/`    |
+| `npm run preview` | Sirve el build resultante para pruebas     |
 
-## Pasos para desarrollo local
+## Desarrollo local
 
-1. Clona o descarga el repo.
-2. `npm install`
-3. Configura `.env.local` con tus valores de Supabase.
-4. `npm run dev` y abre [http://localhost:3000](http://localhost:3000)
+1. Clona el repo y ejecuta `npm install`.
+2. Rellena `.env.local` con tus claves de Supabase, Discogs y Gemini.
+3. `npm run dev` y abre [http://localhost:3000](http://localhost:3000).
+4. Usa `+ Manual` para crear un registro desde cero o `Scan` para usar la camara.
+5. Verifica en Supabase que el disco se haya sincronizado. Si estas offline, la app seguira funcionando gracias al guardado en `localStorage`.
 
-Cada vez que guardes cambios en Supabase se sincronizarán automáticamente al volver a cargar la app. Si no hay conexión, la biblioteca sigue funcionando con `localStorage`.
+## Despliegue (ejemplo con Vercel)
 
-## Despliegue
-
-Puedes usar Vercel, Netlify o Cloudflare Pages:
-
-1. Subes el repo a GitHub/GitLab.
-2. En la plataforma eliges:
+1. Sube el repositorio a GitHub.
+2. En Vercel crea un proyecto nuevo e importa el repo.
+3. Configura:
+   - Framework preset: **Vite**
    - Build command: `npm run build`
    - Output directory: `dist`
-   - Variables `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_SUPABASE_COLUMN_STYLE`
-3. Cada push redeployará la web automáticamente.
+   - Variables de entorno: todas las de `.env.local` (incluida `VITE_GEMINI_API_KEY`)
+4. Lanzar el deploy. Cada push a `main` generara un despliegue nuevo.
 
-## Próximos pasos sugeridos
+## Roadmap sugerido
 
-- Implementar autenticación Supabase para que cada usuario tenga su propia biblioteca.
-- Añadir soporte offline total (IndexedDB) y sincronización cuando vuelva la conexión.
-- Exportar en CSV/JSON o integrarse con otros servicios musicales.
-- Portar el escáner a una app móvil con Expo para acceso completo a cámara.
+- Autenticacion real en Supabase para soportar multiples usuarios.
+- Modo offline completo usando IndexedDB y sincronizacion diferida.
+- Exportar la biblioteca a CSV/JSON y compartirla.
+- Llevar el escaner a una app movil con Expo/Capacitor para un acceso a camara mas robusto.
 
----
-
-¡Listo! Con esta documentación deberías poder clonar, configurar y desplegar VinylVision fácilmente. Cualquier duda o mejora, abre un issue o PR. 🎶
+Si detectas un bug o quieres proponer mejoras, abre un issue o un pull request. Felices vinilos.

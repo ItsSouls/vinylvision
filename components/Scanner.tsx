@@ -71,6 +71,7 @@ export const Scanner: React.FC<ScannerProps> = ({ onClose, onCapture }) => {
     const imageData = canvas.toDataURL('image/jpeg', 0.85);
     stopCamera();
     onCapture({ image: imageData, mode: scanMode });
+    setIsCapturing(false);
   };
 
   return (
