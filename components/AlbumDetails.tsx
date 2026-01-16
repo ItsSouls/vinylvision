@@ -369,7 +369,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
                             newTracks[idx].duration = e.target.value;
                             setFormData({ ...formData, tracks: newTracks });
                           }}
-                          className="bg-transparent w-6 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                          className="bg-transparent w-5 min-w-[2rem] text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
                         />
                       </div>
                       <button
@@ -387,9 +387,23 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
 
                     {expandedTracks[idx] && (
                       <div className="ml-6 space-y-2">
-                        {(track.subTracks || []).map((sub, sIdx) => (
-                          <div key={sIdx} className="flex items-center gap-3 p-2 bg-slate-950 rounded border border-slate-800">
-                            <span className="text-[11px] font-mono text-slate-500">{sub.position || `${track.position || idx + 1}.${sIdx + 1}`}</span>
+                        {[...(track.subTracks || [])]
+                          .sort((a, b) => (a.position || '').localeCompare(b.position || '', undefined, { numeric: true, sensitivity: 'base' }))
+                          .map((sub, sIdx) => (
+                          <div key={sIdx} className="flex items-center gap-3 pl-4 py-1">
+                            <input
+                              type="text"
+                              value={sub.position}
+                              onChange={(e) => {
+                                const newTracks = [...(formData.tracks || [])];
+                                const subs = newTracks[idx].subTracks || [];
+                                subs[sIdx] = { ...subs[sIdx], position: e.target.value };
+                                newTracks[idx].subTracks = subs;
+                                setFormData({ ...formData, tracks: newTracks });
+                              }}
+                              className="w-12 max-w-[48px] bg-transparent text-[11px] font-mono text-slate-500 border-b border-transparent focus:border-indigo-500 focus:outline-none text-right"
+                              placeholder={`${track.position || idx + 1}.${sIdx + 1}`}
+                            />
                             <input
                               type="text"
                               value={sub.title}
@@ -440,7 +454,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
                       </div>
                     )}
                   </div>
-                ))}
+                 ))}
                  
                  {(!formData.tracks || formData.tracks.length === 0) && (
                      <div className="text-center py-8 text-slate-500 text-sm italic">
