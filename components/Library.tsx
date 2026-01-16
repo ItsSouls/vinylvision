@@ -294,12 +294,13 @@ export const Library: React.FC<LibraryProps> = ({
                             ?.map(p => (p.role ? `${p.name} (${p.role})` : p.name))
                             .filter(Boolean)
                             .join(', ');
+                          const hasSubs = track.subTracks && track.subTracks.length > 0;
                           return (
                             <div key={`${album.id}-${idx}`} className="px-4 py-3 text-sm text-slate-200">
                               <div className="flex items-center justify-between gap-3">
                                 <div className="flex items-center gap-3 min-w-0">
                                   <span className="text-xs font-mono text-slate-500 w-8">
-                                    {track.trackNo ?? track.position ?? idx + 1}
+                                    {track.position || idx + 1}
                                   </span>
                                   <div className="min-w-0">
                                     <div className="font-medium truncate">{track.title}</div>
@@ -308,11 +309,29 @@ export const Library: React.FC<LibraryProps> = ({
                                     </div>
                                   </div>
                               </div>
-                              <div className="text-xs text-slate-400 font-mono">{formatDuration(track) || '—'}</div>
-                            </div>
-                            {performers && (
+                                <div className="text-xs text-slate-400 font-mono">{formatDuration(track) || '—'}</div>
+                              </div>
+                              {performers && (
                                 <div className="mt-1 text-[11px] text-slate-500 truncate text-right w-full">
                                   Interpretes: {performers}
+                                </div>
+                              )}
+                              {hasSubs && (
+                                <div className="mt-2 ml-8 space-y-1">
+                                  {track.subTracks?.map((sub, sIdx) => (
+                                    <div key={`${album.id}-${idx}-sub-${sIdx}`} className="flex items-center justify-between gap-3 text-[13px] text-slate-300">
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <span className="text-[11px] font-mono text-slate-500 w-10">{sub.position || `${track.position}.${sIdx + 1}`}</span>
+                                        <div className="min-w-0">
+                                          <div className="truncate">{sub.title}</div>
+                                          {sub.composer?.length ? (
+                                            <div className="text-[11px] text-slate-500 truncate">{sub.composer.join(', ')}</div>
+                                          ) : null}
+                                        </div>
+                                      </div>
+                                      <div className="text-[11px] text-slate-400 font-mono">{sub.duration || (sub.durationSec ? formatDuration(sub as any) : '—')}</div>
+                                    </div>
+                                  ))}
                                 </div>
                               )}
                             </div>

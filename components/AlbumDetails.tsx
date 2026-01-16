@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Album } from '../types';
-import { ArrowLeft, Save, Trash2, Clock, Disc, Wand2, Loader2, MinusCircle } from 'lucide-react';
+import { ArrowLeft, Save, Trash2, Clock, Disc, Wand2, Loader2, MinusCircle, ChevronDown, Plus } from 'lucide-react';
 import { Button } from './Button';
 import { lookupAlbumDetails } from '../services/discogsService';
 
@@ -21,6 +21,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
   onDelete,
   onBack
 }) => {
+  const [expandedTracks, setExpandedTracks] = useState<Record<number, boolean>>({});
   const [formData, setFormData] = useState<Partial<Album>>({
     title: '',
     artist: '',
@@ -335,43 +336,111 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
             
             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                 {formData.tracks?.map((track, idx) => (
-                  <div key={idx} className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg hover:bg-slate-900 transition-colors group">
-                    <button
-                      type="button"
-                      onClick={() => removeTrackAt(idx)}
-                      className="text-red-400 hover:text-red-300 transition-colors p-1"
-                      title="Eliminar pista"
-                    >
-                      <MinusCircle size={16} />
-                    </button>
-                    <span className="text-xs font-mono text-slate-500">{track.position || idx + 1}</span>
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        value={track.title}
-                        onChange={(e) => {
-                          const newTracks = [...(formData.tracks || [])];
-                          newTracks[idx].title = e.target.value;
-                          setFormData({ ...formData, tracks: newTracks });
-                        }}
-                        className="bg-transparent w-full text-slate-200 text-sm focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
-                      />
+                  <div key={idx} className="p-3 bg-slate-900/50 rounded-lg hover:bg-slate-900 transition-colors group space-y-3">
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => removeTrackAt(idx)}
+                        className="text-red-400 hover:text-red-300 transition-colors p-1"
+                        title="Eliminar pista"
+                      >
+                        <MinusCircle size={16} />
+                      </button>
+                      <span className="text-xs font-mono text-slate-500">{track.position || idx + 1}</span>
+                      <div className="flex-1">
+                        <input
+                          type="text"
+                          value={track.title}
+                          onChange={(e) => {
+                            const newTracks = [...(formData.tracks || [])];
+                            newTracks[idx].title = e.target.value;
+                            setFormData({ ...formData, tracks: newTracks });
+                          }}
+                          className="bg-transparent w-full text-slate-200 text-sm focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Clock size={12} />
+                        <input
+                          type="text"
+                          value={track.duration}
+                          onChange={(e) => {
+                            const newTracks = [...(formData.tracks || [])];
+                            newTracks[idx].duration = e.target.value;
+                            setFormData({ ...formData, tracks: newTracks });
+                          }}
+                          className="bg-transparent w-6 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTracks(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                        className="p-1 text-slate-400 hover:text-white transition-colors"
+                        title="Mostrar subtracks"
+                      >
+                        <ChevronDown
+                          size={16}
+                          className={`transition-transform ${expandedTracks[idx] ? 'rotate-180 text-indigo-400' : ''}`}
+                        />
+                      </button>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                      <Clock size={12} />
-                      <input
-                        type="text"
-                        value={track.duration}
-                        onChange={(e) => {
-                          const newTracks = [...(formData.tracks || [])];
-                          newTracks[idx].duration = e.target.value;
-                          setFormData({ ...formData, tracks: newTracks });
-                        }}
-                        className="bg-transparent w-6 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
-                      />
-                    </div>
+
+                    {expandedTracks[idx] && (
+                      <div className="ml-6 space-y-2">
+                        {(track.subTracks || []).map((sub, sIdx) => (
+                          <div key={sIdx} className="flex items-center gap-3 p-2 bg-slate-950 rounded border border-slate-800">
+                            <span className="text-[11px] font-mono text-slate-500">{sub.position || `${track.position || idx + 1}.${sIdx + 1}`}</span>
+                            <input
+                              type="text"
+                              value={sub.title}
+                              onChange={(e) => {
+                                const newTracks = [...(formData.tracks || [])];
+                                const subs = newTracks[idx].subTracks || [];
+                                subs[sIdx] = { ...subs[sIdx], title: e.target.value };
+                                newTracks[idx].subTracks = subs;
+                                setFormData({ ...formData, tracks: newTracks });
+                              }}
+                              className="flex-1 bg-transparent text-slate-200 text-sm focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                              placeholder="Titulo subtrack"
+                            />
+                            <div className="flex items-center gap-2 text-xs text-slate-500">
+                              <Clock size={12} />
+                              <input
+                                type="text"
+                                value={sub.duration}
+                                onChange={(e) => {
+                                  const newTracks = [...(formData.tracks || [])];
+                                  const subs = newTracks[idx].subTracks || [];
+                                  subs[sIdx] = { ...subs[sIdx], duration: e.target.value };
+                                  newTracks[idx].subTracks = subs;
+                                  setFormData({ ...formData, tracks: newTracks });
+                                }}
+                                className="bg-transparent w-10 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                                placeholder="mm:ss"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          className="text-xs text-indigo-400 hover:text-indigo-200 flex items-center gap-1"
+                          onClick={() => {
+                            const newTracks = [...(formData.tracks || [])];
+                            if (!newTracks[idx].subTracks) newTracks[idx].subTracks = [];
+                            newTracks[idx].subTracks!.push({
+                              position: '',
+                              title: 'Nuevo subtrack',
+                              duration: '',
+                            });
+                            setFormData({ ...formData, tracks: newTracks });
+                          }}
+                        >
+                          <Plus size={12} /> Agregar subtrack
+                        </button>
+                      </div>
+                    )}
                   </div>
-                 ))}
+                ))}
                  
                  {(!formData.tracks || formData.tracks.length === 0) && (
                      <div className="text-center py-8 text-slate-500 text-sm italic">

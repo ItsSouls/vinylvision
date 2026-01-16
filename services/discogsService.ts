@@ -1,4 +1,4 @@
-import { ScanResult } from "../types";
+import { ScanResult, Track, Performer, SubTrack } from "../types";
 
 const DISCOGS_TOKEN = import.meta.env.VITE_DISCOGS_TOKEN;
 const BASE_URL = "https://api.discogs.com";
@@ -71,10 +71,36 @@ export const lookupAlbumDetails = async (query: DiscogsQuery): Promise<ScanResul
     const releaseData = await releaseResponse.json();
 
     // 4. Map to ScanResult
-    const tracks = (releaseData.tracklist || []).map((t: any) => ({
-        position: t.position || '',
-        title: t.title || '',
-        duration: t.duration || ''
+    const mapPerformers = (extra: any[]): Performer[] | undefined => {
+      if (!Array.isArray(extra)) return undefined;
+      const mapped = extra
+        .map(e => ({
+          name: e?.name?.replace(/\s\(\d+\)$/, '') || '',
+          role: e?.role || undefined,
+        }))
+        .filter(p => p.name)
+        // Omitir roles de composición; ya vienen en composer
+        .filter(p => !(p.role || '').toLowerCase().includes('composed by'));
+      return mapped.length ? mapped : undefined;
+    };
+
+    const mapSubTracks = (subs: any[] | undefined): SubTrack[] | undefined => {
+      if (!Array.isArray(subs)) return undefined;
+      const mapped = subs.map(sub => ({
+        position: sub?.position || '',
+        title: sub?.title || '',
+        duration: sub?.duration || '',
+        performers: mapPerformers(sub?.extraartists),
+      }));
+      return mapped.length ? mapped : undefined;
+    };
+
+    const tracks: Track[] = (releaseData.tracklist || []).map((t: any) => ({
+      position: t.position || '',
+      title: t.title || '',
+      duration: t.duration || '',
+      performers: mapPerformers(t.extraartists),
+      subTracks: mapSubTracks(t.sub_tracks),
     }));
 
     // Extract format safely

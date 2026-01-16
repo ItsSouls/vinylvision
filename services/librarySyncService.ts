@@ -1,5 +1,5 @@
-import { Album, Track, Performer } from '../types';
-import { supabase, isSupabaseConfigured, configuredColumnStyle } from './supabaseClient';
+import { Album, Track, Performer, SubTrack } from '../types';
+import { supabase, isSupabaseConfigured } from './supabaseClient';
 
 const TABLE = 'albums';
 
@@ -40,54 +40,24 @@ const deserializeAlbum = (record: any): Album => ({
 
 type ColumnStyle = 'snake' | 'camel' | 'legacy';
 
-const serializeAlbum = (album: Album, style: ColumnStyle) => {
-  const base = {
+const serializeAlbum = (album: Album, _style: ColumnStyle) => {
+  // Use the exact column names present in the current schema (mixed camel + snake).
+  return {
     id: album.id,
     artist: album.artist,
     title: album.title,
     year: toDateString(album.year ?? null),
     label: album.label ?? null,
     format: album.format,
-    tracks: album.tracks ?? [],
-    seriesName: album.seriesName ?? null,
-    seriesCatno: album.seriesCatno ?? null,
-    seriesId: album.seriesId ?? null,
-    genres: album.genres ?? null,
-    styles: album.styles ?? null,
-    discogsReleaseId: album.discogsReleaseId ?? null,
-  };
-
-  if (style === 'camel') {
-    return {
-      ...base,
-      catalogNumber: album.catalogNumber ?? null,
-      coverUrl: album.coverUrl ?? null,
-      addedAt: album.addedAt,
-    };
-  }
-
-  if (style === 'legacy') {
-    return {
-      ...base,
-      catalognumber: album.catalogNumber ?? null,
-      coverurl: album.coverUrl ?? null,
-      addedat: album.addedAt,
-      seriesname: album.seriesName ?? null,
-      seriescatno: album.seriesCatno ?? null,
-      seriesid: album.seriesId ?? null,
-      discogsreleaseid: album.discogsReleaseId ?? null,
-    };
-  }
-
-  return {
-    ...base,
-    catalog_number: album.catalogNumber ?? null,
-    cover_url: album.coverUrl ?? null,
-    added_at: album.addedAt,
-    series_name: album.seriesName ?? null,
+    catalogNumber: album.catalogNumber ?? null, // camel in DB
+    coverUrl: album.coverUrl ?? null, // camel in DB
+    addedAt: album.addedAt, // camel in DB
+    series_name: album.seriesName ?? null, // snake in DB
     series_catno: album.seriesCatno ?? null,
     series_id: album.seriesId ?? null,
-    discogs_release_id: album.discogsReleaseId ?? null,
+    genres: album.genres ?? null,
+    styles: album.styles ?? null,
+    discogs_release_id: album.discogsReleaseId ?? null, // snake in DB
   };
 };
 
@@ -96,6 +66,21 @@ const formatDuration = (seconds?: number | null) => {
   const mins = Math.floor(seconds / 60);
   const secs = Math.round(seconds % 60);
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+const parseDurationSec = (duration?: string | null): number | null => {
+  if (!duration) return null;
+  const trimmed = duration.trim();
+  const mmss = /^(\d+):(\d{1,2})$/.exec(trimmed);
+  if (mmss) {
+    const mins = Number(mmss[1]);
+    const secs = Number(mmss[2]);
+    if (Number.isFinite(mins) && Number.isFinite(secs)) {
+      return mins * 60 + secs;
+    }
+  }
+  const asNumber = Number(trimmed);
+  return Number.isFinite(asNumber) ? asNumber : null;
 };
 
 const sanitizePerformers = (value: any): Performer[] | undefined => {
@@ -122,16 +107,26 @@ const sanitizePerformers = (value: any): Performer[] | undefined => {
   return undefined;
 };
 
-const toTrack = (row: any): Track => {
+const toSubTrack = (row: any): SubTrack => {
   const durationSec = typeof row.duration_sec === 'number' ? row.duration_sec : row.durationSec;
-  const trackNo = row.track_no ?? row.trackNo;
-
   return {
-    position: trackNo !== undefined && trackNo !== null ? String(trackNo) : row.position ?? '',
+    position: row.position ?? '',
     title: row.title ?? '',
     duration: formatDuration(durationSec),
     durationSec: typeof durationSec === 'number' ? durationSec : undefined,
-    trackNo: typeof trackNo === 'number' ? trackNo : undefined,
+    composer: Array.isArray(row.composer) ? row.composer : row.composer ? [row.composer] : undefined,
+    performers: sanitizePerformers(row.performers),
+  };
+};
+
+const toTrack = (row: any): Track => {
+  const durationSec = typeof row.duration_sec === 'number' ? row.duration_sec : row.durationSec;
+
+  return {
+    position: row.position ?? '',
+    title: row.title ?? '',
+    duration: formatDuration(durationSec),
+    durationSec: typeof durationSec === 'number' ? durationSec : undefined,
     composer: Array.isArray(row.composer) ? row.composer : row.composer ? [row.composer] : undefined,
     performers: sanitizePerformers(row.performers),
   };
@@ -151,33 +146,62 @@ export const fetchRemoteAlbums = async (): Promise<Album[] | null> => {
     throw error;
   }
 
-  let tracksByAlbum: Record<string, Track[]> = {};
+  let tracksByAlbum: Record<string, { track: Track; id: any }[]> = {};
+  let rawTrackRows: any[] = [];
   try {
     const { data: trackRows, error: trackError } = await supabase
       .from('tracks')
       .select('*')
-      .order('track_no', { ascending: true });
+      .order('position', { ascending: true });
 
     if (trackError) {
       console.warn('Failed to fetch tracks', trackError);
     } else if (trackRows) {
-      tracksByAlbum = (trackRows || []).reduce((acc, row) => {
+      rawTrackRows = trackRows || [];
+      tracksByAlbum = rawTrackRows.reduce((acc, row) => {
         const albumId = row.album_id ?? row.albumId;
         if (!albumId) return acc;
         if (!acc[albumId]) acc[albumId] = [];
-        acc[albumId].push(toTrack(row));
+        acc[albumId].push({ track: toTrack(row), id: row.id });
         return acc;
-      }, {} as Record<string, Track[]>);
+      }, {} as Record<string, { track: Track; id: any }[]>);
     }
   } catch (err) {
     console.warn('Track fetch threw', err);
+  }
+
+  // Fetch subtracks grouped by track_id
+  let subtracksByTrack: Record<string, SubTrack[]> = {};
+  try {
+    const { data: subRows, error: subError } = await supabase
+      .from('subtracks')
+      .select('*')
+      .order('position', { ascending: true });
+
+    if (subError) {
+      console.warn('Failed to fetch subtracks', subError);
+    } else if (subRows) {
+      subtracksByTrack = (subRows || []).reduce((acc, row) => {
+        const trackId = row.track_id ?? row.trackId;
+        if (!trackId) return acc;
+        if (!acc[trackId]) acc[trackId] = [];
+        acc[trackId].push(toSubTrack(row));
+        return acc;
+      }, {} as Record<string, SubTrack[]>);
+    }
+  } catch (err) {
+    console.warn('Subtrack fetch threw', err);
   }
 
   return (data || []).map(record => {
     const album = deserializeAlbum(record);
     const extraTracks = tracksByAlbum[album.id] ?? [];
     if (extraTracks.length > 0) {
-      return { ...album, tracks: extraTracks };
+      const withSubs = extraTracks.map(({ track, id }) => ({
+        ...track,
+        subTracks: subtracksByTrack[String(id)] ?? [],
+      }));
+      return { ...album, tracks: withSubs };
     }
     return album;
   });
@@ -186,31 +210,89 @@ export const fetchRemoteAlbums = async (): Promise<Album[] | null> => {
 export const upsertRemoteAlbum = async (album: Album) => {
   if (!isSupabaseConfigured || !supabase) return;
 
-  const tryUpsert = async (style: ColumnStyle) => {
-    const payload = serializeAlbum(album, style);
-    return supabase.from(TABLE).upsert(payload, {
-      onConflict: 'id',
-      returning: 'minimal',
-    });
-  };
+  const payload = serializeAlbum(album, 'camel');
+  const { error } = await supabase.from(TABLE).upsert(payload, {
+    onConflict: 'id',
+    returning: 'minimal',
+  });
 
-  // Try styles sequentially until one works or we exhaust options
-  const styles: ColumnStyle[] = configuredColumnStyle
-    ? [configuredColumnStyle, 'snake', 'camel', 'legacy']
-    : ['snake', 'camel', 'legacy'];
-  let lastError: any = null;
-
-  for (const style of styles) {
-    const { error } = await tryUpsert(style);
-    if (!error) return;
-    lastError = error;
-    if (error.code !== '42703' && error.code !== 'PGRST204') {
-      throw error;
-    }
+  if (error) {
+    throw error;
   }
 
-  if (lastError) {
-    throw lastError;
+  // Persist tracks in separate table
+  const tracks = album.tracks || [];
+  const albumId = album.id;
+
+  const toTrackRow = (track: Track, idx: number) => {
+    const resolvedPosition =
+      typeof track.position === 'string' && track.position.trim()
+        ? track.position.trim()
+        : String(idx + 1);
+    const durationSec = track.durationSec ?? parseDurationSec(track.duration);
+    const composer = track.composer?.filter(Boolean);
+    const performers = track.performers?.filter(Boolean);
+
+    return {
+      album_id: albumId,
+      position: resolvedPosition,
+      title: track.title ?? '',
+      duration_sec: typeof durationSec === 'number' ? durationSec : null,
+      composer: composer && composer.length > 0 ? composer : [],
+      performers: performers && performers.length > 0 ? performers : [],
+    };
+  };
+
+  try {
+    await supabase.from('tracks').delete().eq('album_id', albumId);
+    if (tracks.length > 0) {
+      const insertRows = tracks.map(toTrackRow);
+      const { error: insertError } = await supabase.from('tracks').insert(insertRows);
+      if (insertError) {
+        throw insertError;
+      }
+
+      // Fetch inserted tracks to get IDs
+      const { data: insertedTracks, error: fetchInsertedError } = await supabase
+        .from('tracks')
+        .select('id, position, title')
+        .eq('album_id', albumId)
+        .order('position', { ascending: true });
+
+      if (fetchInsertedError) {
+        throw fetchInsertedError;
+      }
+
+      // Insert subtracks if any
+      const subtrackRows: any[] = [];
+      (insertedTracks || []).forEach((row, idx) => {
+        const trackDef = tracks[idx];
+        if (!trackDef?.subTracks || trackDef.subTracks.length === 0) return;
+        trackDef.subTracks.forEach((sub, subIdx) => {
+          const durationSec = sub.durationSec ?? parseDurationSec(sub.duration);
+          const composer = sub.composer?.filter(Boolean);
+          const performers = sub.performers?.filter(Boolean);
+          subtrackRows.push({
+            track_id: row.id,
+            position: sub.position?.trim() || `${row.position || ''}.${subIdx + 1}`,
+            title: sub.title ?? '',
+            duration_sec: typeof durationSec === 'number' ? durationSec : null,
+            composer: composer && composer.length > 0 ? composer : [],
+            performers: performers && performers.length > 0 ? performers : [],
+          });
+        });
+      });
+
+      if (subtrackRows.length > 0) {
+        const { error: subInsertError } = await supabase.from('subtracks').insert(subtrackRows);
+        if (subInsertError) {
+          throw subInsertError;
+        }
+      }
+    }
+  } catch (trackError) {
+    console.error('Failed to sync tracks with Supabase', trackError);
+    throw trackError;
   }
 };
 

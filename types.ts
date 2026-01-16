@@ -3,14 +3,23 @@ export interface Performer {
   role?: string;
 }
 
+export interface SubTrack {
+  position: string;
+  title: string;
+  duration?: string;
+  durationSec?: number;
+  composer?: string[];
+  performers?: Performer[];
+}
+
 export interface Track {
   position: string;
   title: string;
   duration: string;
-  trackNo?: number;
   durationSec?: number;
   composer?: string[];
   performers?: Performer[];
+  subTracks?: SubTrack[];
 }
 
 export interface Album {
