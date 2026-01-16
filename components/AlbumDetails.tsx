@@ -28,8 +28,14 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
     year: '',
     label: '',
     format: 'Vinyl',
+    seriesName: '',
+    seriesCatno: '',
+    seriesId: '',
+    genres: [],
+    styles: [],
     tracks: [],
     coverUrl: '',
+    discogsReleaseId: undefined,
   });
 
   const [isLookingUp, setIsLookingUp] = useState(false);
@@ -66,6 +72,12 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
         ...base,
         ...initialData,
         coverUrl: initialData.coverUrl || base.coverUrl,
+        genres: initialData.genres || [],
+        styles: initialData.styles || [],
+        seriesName: initialData.seriesName || '',
+        seriesCatno: initialData.seriesCatno || '',
+        seriesId: initialData.seriesId || '',
+        discogsReleaseId: initialData.discogsReleaseId || undefined,
       });
     } else {
       setFormData(base);
@@ -100,7 +112,13 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
         label: result.label || prev.label,
         tracks: result.suggestedTracks || prev.tracks,
         format: (result.format as any) || prev.format,
-        coverUrl: result.coverUrl || prev.coverUrl
+        coverUrl: result.coverUrl || prev.coverUrl,
+        genres: result.genres || prev.genres,
+        styles: result.styles || prev.styles,
+        seriesName: result.seriesName || prev.seriesName,
+        seriesCatno: result.seriesCatno || prev.seriesCatno,
+        seriesId: result.seriesId || prev.seriesId,
+        discogsReleaseId: result.discogsReleaseId || prev.discogsReleaseId,
       }));
     } catch (error: any) {
       alert(error.message || "No se encontraron datos en Discogs.");
@@ -217,7 +235,7 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
               
                <div className="grid grid-cols-2 gap-4">
                  <div>
-                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Ano</label>
+                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Año</label>
                     <input
                       type="text"
                       value={formData.year}
@@ -235,56 +253,124 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                       placeholder="ej. Harvest"
                     />
-                 </div>
+                </div>
+             </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Coleccion</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.seriesName}
+                      onChange={e => setFormData({ ...formData, seriesName: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="ej. Enciclopedia Salvat..."
+                    />
+                    <input
+                      type="text"
+                      value={formData.seriesCatno}
+                      onChange={e => setFormData({ ...formData, seriesCatno: e.target.value })}
+                      className="w-24 bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="#"
+                      title="Numero dentro de la serie"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Release ID</label>
+                    <input
+                      type="text"
+                      value={formData.discogsReleaseId ?? ''}
+                      onChange={e => setFormData({ ...formData, discogsReleaseId: e.target.value ? Number(e.target.value) : undefined })}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="ej. 123456"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Series ID</label>
+                    <input
+                      type="text"
+                      value={formData.seriesId}
+                      onChange={e => setFormData({ ...formData, seriesId: e.target.value })}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="ID de Discogs"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Géneros</label>
+                  <input
+                    type="text"
+                    value={(formData.genres || []).join(', ')}
+                    onChange={e => setFormData({ ...formData, genres: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="Jazz, Classical"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 uppercase tracking-wider mb-1">Estilos</label>
+                  <input
+                    type="text"
+                    value={(formData.styles || []).join(', ')}
+                    onChange={e => setFormData({ ...formData, styles: e.target.value.split(',').map(v => v.trim()).filter(Boolean) })}
+                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
+                    placeholder="Smooth Jazz, Romantic"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
           {/* Tracklist */}
           <div className="space-y-4">
-             <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                 <h3 className="text-lg font-semibold text-white">Lista de canciones</h3>
-                 <span className="text-xs text-slate-500">{formData.tracks?.length || 0} pistas</span>
-             </div>
-             
-             <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
-                 {formData.tracks?.map((track, idx) => (
-                     <div key={idx} className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg hover:bg-slate-900 transition-colors group">
-                         <button
-                           type="button"
-                           onClick={() => removeTrackAt(idx)}
-                           className="text-red-400 hover:text-red-300 transition-colors p-1"
-                           title="Eliminar pista"
-                         >
-                           <MinusCircle size={16} />
-                         </button>
-                         <span className="text-xs font-mono text-slate-500">{track.position || idx + 1}</span>
-                         <div className="flex-1">
-                             <input
-                                type="text"
-                                value={track.title}
-                                onChange={(e) => {
-                                    const newTracks = [...(formData.tracks || [])];
-                                    newTracks[idx].title = e.target.value;
-                                    setFormData({...formData, tracks: newTracks});
-                                }}
-                                className="bg-transparent w-full text-slate-200 text-sm focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
-                             />
-                         </div>
-                         <div className="flex items-center gap-2 text-xs text-slate-500">
-                             <Clock size={12} />
-                             <input
-                                type="text"
-                                value={track.duration}
-                                onChange={(e) => {
-                                    const newTracks = [...(formData.tracks || [])];
-                                    newTracks[idx].duration = e.target.value;
-                                    setFormData({...formData, tracks: newTracks});
-                                }}
-                                className="bg-transparent w-6 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
-                             />
-                         </div>
-                     </div>
+            <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 className="text-lg font-semibold text-white">Lista de canciones</h3>
+                <span className="text-xs text-slate-500">{formData.tracks?.length || 0} pistas</span>
+            </div>
+            
+            <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {formData.tracks?.map((track, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 bg-slate-900/50 rounded-lg hover:bg-slate-900 transition-colors group">
+                    <button
+                      type="button"
+                      onClick={() => removeTrackAt(idx)}
+                      className="text-red-400 hover:text-red-300 transition-colors p-1"
+                      title="Eliminar pista"
+                    >
+                      <MinusCircle size={16} />
+                    </button>
+                    <span className="text-xs font-mono text-slate-500">{track.position || idx + 1}</span>
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        value={track.title}
+                        onChange={(e) => {
+                          const newTracks = [...(formData.tracks || [])];
+                          newTracks[idx].title = e.target.value;
+                          setFormData({ ...formData, tracks: newTracks });
+                        }}
+                        className="bg-transparent w-full text-slate-200 text-sm focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      <Clock size={12} />
+                      <input
+                        type="text"
+                        value={track.duration}
+                        onChange={(e) => {
+                          const newTracks = [...(formData.tracks || [])];
+                          newTracks[idx].duration = e.target.value;
+                          setFormData({ ...formData, tracks: newTracks });
+                        }}
+                        className="bg-transparent w-6 text-right focus:outline-none border-b border-transparent focus:border-indigo-500 pb-0.5"
+                      />
+                    </div>
+                  </div>
                  ))}
                  
                  {(!formData.tracks || formData.tracks.length === 0) && (
@@ -294,17 +380,17 @@ export const AlbumDetails: React.FC<AlbumDetailsProps> = ({
                  )}
              </div>
              
-             <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm" 
-                className="w-full border-dashed border border-slate-800 py-3"
-                    onClick={() => {
-                        setFormData({
-                            ...formData,
-                            tracks: [...(formData.tracks || []), { position: '', title: 'Nueva pista', duration: '' }]
-                        })
-                    }}
+                 <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full border-dashed border border-slate-800 py-3"
+                        onClick={() => {
+                            setFormData({
+                                ...formData,
+                                tracks: [...(formData.tracks || []), { position: '', title: 'Nueva pista', duration: '' }]
+                            })
+                        }}
              >
                  + Agregar pista
              </Button>

@@ -1,7 +1,16 @@
+export interface Performer {
+  name: string;
+  role?: string;
+}
+
 export interface Track {
   position: string;
   title: string;
   duration: string;
+  trackNo?: number;
+  durationSec?: number;
+  composer?: string[];
+  performers?: Performer[];
 }
 
 export interface Album {
@@ -13,8 +22,14 @@ export interface Album {
   catalogNumber?: string;
   format: 'Vinyl' | 'CD' | 'Cassette' | 'Digital';
   coverUrl?: string; // Base64 or URL
+  seriesName?: string;
+  seriesCatno?: string;
+  seriesId?: string;
+  genres?: string[];
+  styles?: string[];
   tracks: Track[];
   addedAt: number;
+  discogsReleaseId?: number;
 }
 
 export interface ScanResult {

@@ -1,22 +1,42 @@
 import React, { useMemo, useState } from 'react';
-import { Album } from '../types';
-import { Search, Disc, Music, Calendar, Hash, Plus, ScanLine } from 'lucide-react';
+import { Album, Track } from '../types';
+import {
+  Search,
+  Disc,
+  Music,
+  Calendar,
+  Hash,
+  Plus,
+  ScanLine,
+  LayoutGrid,
+  List,
+  ChevronDown,
+  Library as LibraryIcon,
+  Pencil,
+} from 'lucide-react';
 import { Button } from './Button';
 
 interface LibraryProps {
   albums: Album[];
   onSelectAlbum: (album: Album) => void;
+  onEditAlbum?: (album: Album) => void;
   onManualClick: () => void;
   onScanClick: () => void;
+  viewMode: 'grid' | 'list';
+  onToggleView: () => void;
 }
 
 export const Library: React.FC<LibraryProps> = ({
   albums,
   onSelectAlbum,
+  onEditAlbum,
   onManualClick,
   onScanClick,
+  viewMode,
+  onToggleView,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const normalizedSearch = searchTerm.trim().toLowerCase();
 
   const filteredAlbums = useMemo(() => {
@@ -34,8 +54,13 @@ export const Library: React.FC<LibraryProps> = ({
         matches(album.catalogNumber) ||
         matches(album.label) ||
         matches(album.format) ||
-        matches(album.year)
+        matches(album.year) ||
+        matches(album.seriesName)
       ) {
+        return true;
+      }
+
+      if (album.genres?.some(g => matches(g)) || album.styles?.some(s => matches(s))) {
         return true;
       }
 
@@ -48,6 +73,20 @@ export const Library: React.FC<LibraryProps> = ({
   }, [albums, normalizedSearch]);
 
   const totalTracks = albums.reduce((acc, alb) => acc + (alb.tracks?.length || 0), 0);
+
+  const toggleExpanded = (id: string) => {
+    setExpanded(prev => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const formatDuration = (track: Track) => {
+    if (track.duration) return track.duration;
+    if (typeof track.durationSec === 'number') {
+      const mins = Math.floor(track.durationSec / 60);
+      const secs = Math.round(track.durationSec % 60);
+      return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+    return '';
+  };
 
   return (
     <div className="p-4 md:p-8 space-y-6 pb-24 md:pb-8">
@@ -78,6 +117,15 @@ export const Library: React.FC<LibraryProps> = ({
             <Button variant="primary" icon={<ScanLine size={16} />} onClick={onScanClick} className="whitespace-nowrap">
               Escanear
             </Button>
+            <Button
+              variant="ghost"
+              icon={viewMode === 'grid' ? <List size={16} /> : <LayoutGrid size={16} />}
+              onClick={onToggleView}
+              className="whitespace-nowrap"
+              title="Cambiar vista"
+            >
+              {viewMode === 'grid' ? 'Lista detallada' : 'Vista cards'}
+            </Button>
           </div>
         </div>
       </div>
@@ -89,6 +137,14 @@ export const Library: React.FC<LibraryProps> = ({
         </Button>
         <Button className="flex-1" icon={<ScanLine size={16} />} onClick={onScanClick}>
           Escanear
+        </Button>
+        <Button
+          variant="ghost"
+          className="flex-1"
+          icon={viewMode === 'grid' ? <List size={16} /> : <LayoutGrid size={16} />}
+          onClick={onToggleView}
+        >
+          {viewMode === 'grid' ? 'Lista' : 'Cards'}
         </Button>
       </div>
 
@@ -113,7 +169,7 @@ export const Library: React.FC<LibraryProps> = ({
             </div>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'grid' ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
           {filteredAlbums.map((album) => (
             <div
@@ -159,6 +215,116 @@ export const Library: React.FC<LibraryProps> = ({
               </div>
             </div>
           ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredAlbums.map(album => {
+            const trackCount = album.tracks?.length || 0;
+            const isOpen = expanded[album.id];
+            const genres = album.genres?.length ? album.genres.join(', ') : album.styles?.join(', ');
+            return (
+              <div key={album.id} className="border border-slate-800 rounded-xl bg-slate-900/60 overflow-hidden">
+                <button
+                  onClick={() => toggleExpanded(album.id)}
+                  className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-900 transition-colors min-h-[84px]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-800 flex-shrink-0">
+                      {album.coverUrl ? (
+                        <img src={album.coverUrl} alt={album.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-600">
+                          <Music size={20} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-100 truncate">{album.title}</div>
+                      <div className="text-xs text-slate-400 truncate">{album.artist}</div>
+                      <div className="text-[11px] text-slate-500 flex items-center gap-2 mt-1 overflow-hidden">
+                        {album.seriesName && (
+                          <span className="inline-flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-full max-w-[150px] overflow-hidden whitespace-nowrap text-ellipsis">
+                            <LibraryIcon size={12} /> {album.seriesName}
+                          </span>
+                        )}
+                        {album.label && (
+                          <span className="inline-flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-full max-w-[150px] overflow-hidden whitespace-nowrap text-ellipsis">
+                            <Disc size={12} /> {album.label}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-xs text-slate-400">
+                    {album.year && <span>{album.year}</span>}
+                    <span>{album.format}</span>
+                    {genres && <span className="hidden sm:inline text-slate-500">{genres}</span>}
+                    <span className="font-mono text-slate-300">{trackCount} pistas</span>
+                    <div className="flex items-center gap-2">
+                      {onEditAlbum && (
+                        <button
+                          type="button"
+                          className="p-1 rounded hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEditAlbum(album);
+                          }}
+                          aria-label="Editar disco"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                      )}
+                      <ChevronDown
+                        size={18}
+                        className={`transition-transform ${isOpen ? 'rotate-180 text-indigo-400' : 'text-slate-500'}`}
+                      />
+                    </div>
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="border-t border-slate-800 bg-slate-950/60">
+                    {trackCount === 0 ? (
+                      <div className="px-4 py-3 text-sm text-slate-500">No hay pistas para este disco.</div>
+                    ) : (
+                      <div className="divide-y divide-slate-900">
+                        {album.tracks.map((track, idx) => {
+                          const composers = track.composer?.join(', ');
+                          const performers = track.performers
+                            ?.map(p => (p.role ? `${p.name} (${p.role})` : p.name))
+                            .filter(Boolean)
+                            .join(', ');
+                          return (
+                            <div key={`${album.id}-${idx}`} className="px-4 py-3 text-sm text-slate-200">
+                              <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <span className="text-xs font-mono text-slate-500 w-8">
+                                    {track.trackNo ?? track.position ?? idx + 1}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <div className="font-medium truncate">{track.title}</div>
+                                    <div className="text-xs text-slate-500 truncate">
+                                      {composers || 'Compositor desconocido'}
+                                    </div>
+                                  </div>
+                              </div>
+                              <div className="text-xs text-slate-400 font-mono">{formatDuration(track) || '—'}</div>
+                            </div>
+                            {performers && (
+                                <div className="mt-1 text-[11px] text-slate-500 truncate text-right w-full">
+                                  Interpretes: {performers}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

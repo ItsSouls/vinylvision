@@ -45,6 +45,7 @@ export default function App() {
   const [scannedImage, setScannedImage] = useState<string | undefined>(undefined);
   const [draftAlbum, setDraftAlbum] = useState<Partial<Album> | undefined>(undefined);
   const [isProcessingScan, setIsProcessingScan] = useState(false);
+  const [libraryViewMode, setLibraryViewMode] = useState<'grid' | 'list'>('grid');
   const [isEditor, setIsEditor] = useState<boolean>(() => {
     const cached = localStorage.getItem('vinyl-vision-editor');
     return cached === 'granted';
@@ -215,6 +216,10 @@ export default function App() {
     setView(ViewState.LIBRARY);
   };
 
+  const handleToggleLibraryView = () => {
+    setLibraryViewMode(prev => (prev === 'grid' ? 'list' : 'grid'));
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans">
       {isProcessingScan && (
@@ -229,6 +234,9 @@ export default function App() {
          <Library
             albums={albums}
             onSelectAlbum={handleSelectAlbum}
+            onEditAlbum={handleSelectAlbum}
+            viewMode={libraryViewMode}
+            onToggleView={handleToggleLibraryView}
             onManualClick={handleManualAdd}
             onScanClick={handleStartScan}
           />
